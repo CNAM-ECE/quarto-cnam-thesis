@@ -1,10 +1,14 @@
 # Abstract {.unnumbered .toc-black}
 
-<!-- Starter — replace with your abstract in English.
-     Documentation: https://zinc75.github.io/quarto-cnam-thesis/en/ -->
+**Keywords:** Time-Sensitive Networking (TSN), network calculus, deterministic networking, worst-case delay bounds, dynamic reconfiguration, admission control, certification
 
-**Keywords:** [keyword1, keyword2, keyword3]
+Time-Sensitive Networking (TSN) extends Ethernet with mechanisms that give hard real-time guarantees to industrial, automotive and avionics systems. These mechanisms include strict priority, time-aware shaping (IEEE 802.1Qbv), credit-based shaping (802.1Qav), asynchronous traffic shaping (802.1Qcr), per-stream policing (802.1Qci) and frame replication and elimination (802.1CB). Such guarantees are normally established offline, for a fixed configuration of routes, priorities and gate schedules. In practice, configurations change at run time. New flows have to be admitted, resource fragmentation blocks better placements, and link or bridge faults force traffic to be rerouted. Recent work proposes fast reconfiguration methods, such as SDN-based path reconfiguration driven by mixed-integer programming and resilient time-aware shaper configurations that reinsert flows into existing windows after a fault. These methods produce candidate configurations quickly, but none of them proves that every flow still meets its deadline once the change is applied.
 
-[Your abstract in English.]
+This thesis argues that network calculus is the natural tool to certify a reconfiguration, whatever method proposes it. We first map each TSN mechanism to the corresponding network calculus objects: arrival curves, service curves, residual service, regulators and jitter terms. On this basis we propose a *certified admission gate*. Any proposer (an optimisation model, a heuristic, a constraint solver or a learned policy) is followed by an analysis step that recomputes worst-case delay and backlog bounds for every affected flow. The change is committed only if all deadlines still hold, and the gate then issues a checkable certificate. The gate is implemented with an incremental Total Flow Analysis under non-preemptive static priority. Its bounds agree with the reference tool panco to within numerical precision, it runs about twice as fast as a full re-analysis, and its median admission time is a few milliseconds.
 
-{{< lipsum 2 >}}
+The thesis then addresses the questions the gate leaves open:
+
+- the safety of transient states while bridges apply updates at different instants;
+- the trade-off between the tightness and the speed of the analysis for online use;
+- the effect of fault recovery and redundancy on burstiness;
+- the modelling of clock error, processing jitter and policing, so that the certificate carries over to the real network.

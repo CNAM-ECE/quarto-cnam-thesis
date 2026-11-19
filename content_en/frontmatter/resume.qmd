@@ -1,10 +1,14 @@
 # Résumé {.unnumbered .toc-black}
 
-<!-- Starter — French abstract (mandatory for all theses, regardless of thesis language).
-     Documentation: https://zinc75.github.io/quarto-cnam-thesis/en/ -->
+**Mots-clés :** Time-Sensitive Networking (TSN), calcul réseau, réseaux déterministes, bornes de délai pire cas, reconfiguration dynamique, contrôle d'admission, certification
 
-**Mots-clés :** [mot1, mot2, mot3]
+Le Time-Sensitive Networking (TSN) étend Ethernet avec des mécanismes qui apportent des garanties temps réel strictes aux systèmes industriels, automobiles et avioniques. Ces mécanismes comprennent la priorité stricte, la mise en forme temporelle (IEEE 802.1Qbv), la mise en forme à crédit (802.1Qav), la mise en forme asynchrone (802.1Qcr), le filtrage par flux (802.1Qci) ainsi que la réplication et l'élimination de trames (802.1CB). Ces garanties sont habituellement établies hors ligne, pour une configuration figée des routes, des priorités et des ordonnancements de portes. En pratique, la configuration évolue en cours d'exploitation. De nouveaux flux doivent être admis, la fragmentation des ressources empêche de meilleurs placements, et les pannes de liens ou de commutateurs imposent de rerouter le trafic. Des travaux récents proposent des méthodes de reconfiguration rapides, comme la reconfiguration de chemins pilotée par SDN et par programmation linéaire en nombres entiers, ou des configurations résilientes du Time-Aware Shaper qui réinsèrent les flux dans des fenêtres existantes après une panne. Ces méthodes produisent rapidement des configurations candidates, mais aucune ne prouve que chaque flux respecte encore son échéance une fois le changement appliqué.
 
-[Votre résumé en français.]
+Cette thèse soutient que le calcul réseau est l'outil naturel pour certifier une reconfiguration, quelle que soit la méthode qui la propose. Nous associons d'abord chaque mécanisme TSN aux objets correspondants du calcul réseau : courbes d'arrivée, courbes de service, service résiduel, régulateurs et termes de gigue. Sur cette base, nous proposons une *porte d'admission certifiée*. Tout proposeur (modèle d'optimisation, heuristique, solveur de contraintes ou politique apprise) est suivi d'une étape d'analyse qui recalcule les bornes pire cas de délai et d'arriéré de chaque flux affecté. Le changement n'est appliqué que si toutes les échéances restent respectées, et la porte délivre alors un certificat vérifiable. La porte repose sur une Total Flow Analysis incrémentale en priorité statique non préemptive. Ses bornes concordent avec l'outil de référence panco à la précision numérique près, elle est environ deux fois plus rapide qu'une ré-analyse complète, et son temps médian d'admission est de quelques millisecondes.
 
-{{< lipsum 2 >}}
+La thèse traite ensuite les questions que la porte laisse ouvertes :
+
+- la sûreté des états transitoires, lorsque les commutateurs appliquent les mises à jour à des instants différents ;
+- le compromis entre la finesse et la rapidité de l'analyse pour un usage en ligne ;
+- l'effet de la reprise sur panne et de la redondance sur la sporadicité du trafic ;
+- la modélisation de l'erreur d'horloge, de la gigue de traitement et du filtrage, afin que le certificat reste valable sur le réseau réel.
