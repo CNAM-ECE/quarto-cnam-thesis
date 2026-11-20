@@ -1,0 +1,139 @@
+# ==============================================================================
+# thesis.yml — Build the thesis (English profile) and deploy it to GitHub Pages
+# Construit la thèse (profil anglais) et la déploie sur GitHub Pages.
+#
+# Runs on every push to main that touches the thesis sources, and manually.
+# S'exécute à chaque push sur main modifiant les sources de la thèse, et à la main.
+#
+# Prerequisites / Prérequis :
+#   • In repo Settings → Pages → Source: select "GitHub Actions"
+#   • Repo must be public, or GitHub Pages must be enabled for private repos
+#
+# Speed / Vitesse :
+#   LaTeX comes from TinyTeX (~100 MB, cached) instead of `apt install texlive-full`
+#   (~5 GB, 8–46 min, and it can hang). Quarto auto-installs any missing LaTeX
+#   package on the first run; the cache keeps them for later runs.
+#   LaTeX vient de TinyTeX (~100 Mo, mis en cache) au lieu de texlive-full (~5 Go).
+#
+# To also publish the French profile, add a "quarto render --profile fr" step and
+# copy _these_fr/ into _site/fr/. / Pour publier aussi le profil français, ajouter
+# une étape "quarto render --profile fr" et copier _these_fr/ dans _site/fr/.
+# ==============================================================================
+
+name: Build and deploy thesis
+
+on:
+  push:
+    branches: [main]
+    # Skip the build when only README, docs or other unrelated files change.
+    # Pas de build si seuls le README, la doc ou d'autres fichiers changent.
+    paths:
+      - 'content_en/**'
+      - 'index.qmd'
+      - '_quarto.yml'
+      - '_quarto-en.yml'
+      - '_extensions/**'
+      - '_scripts/**'
+      - 'images/**'
+      - 'references.bib'
+      - 'IEEEtran-francais.bst'
+      - 'requirements.txt'
+      - '.github/workflows/thesis.yml'
+  workflow_dispatch:  # manual trigger / déclenchement manuel
+
+# Required for the native GitHub Pages deployment API.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never cancel an in-progress deployment; a newer push waits, and older queued
+# runs are dropped. / Ne jamais annuler un déploiement en cours.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    # Fail fast instead of hanging for the 6 h default.
+    # Échouer vite au lieu de bloquer 6 h (valeur par défaut).
+    timeout-minutes: 30
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      # ── Source ──────────────────────────────────────────────────────────────
+      - uses: actions/checkout@v4
+
+      # ── Python ──────────────────────────────────────────────────────────────
+      # Only needed if chapters contain Python cells. uv creates .venv/ at the
+      # project root; Quarto auto-detects it.
+      # Utile seulement si les chapitres contiennent des cellules Python.
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Create .venv and install Python dependencies
+        run: |
+          uv venv
+          uv pip install -r requirements.txt
+
+      # ── Quarto ──────────────────────────────────────────────────────────────
+      - name: Set up Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+
+      # ── TinyTeX (cached) ────────────────────────────────────────────────────
+      # The year is in the cache key: a TinyTeX from last year's TeX Live cannot
+      # install packages from this year's repository, so it is rebuilt once a year.
+      # L'année est dans la clé : un TinyTeX de l'an dernier ne peut plus installer
+      # de paquets depuis le dépôt de l'année en cours.
+      - name: Get TeX Live year
+        id: texyear
+        run: echo "year=$(date -u +%Y)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache TinyTeX
+        uses: actions/cache@v4
+        with:
+          path: ~/.TinyTeX
+          # A new key (and a new saved cache) only when LaTeX inputs change, so
+          # packages auto-installed for new content are kept.
+          # Nouvelle clé seulement quand les sources LaTeX changent.
+          key: tinytex-${{ runner.os }}-${{ steps.texyear.outputs.year }}-${{ hashFiles('_extensions/**/*.tex', '_extensions/**/*.lua', '_quarto.yml', '_quarto-en.yml', 'content_en/**/*.qmd', 'index.qmd') }}
+          restore-keys: |
+            tinytex-${{ runner.os }}-${{ steps.texyear.outputs.year }}-
+
+      - name: Install TinyTeX (only if not restored from cache)
+        run: |
+          if [ ! -x "$HOME/.TinyTeX/bin/x86_64-linux/tlmgr" ]; then
+            quarto install tinytex --no-prompt
+          fi
+          echo "$HOME/.TinyTeX/bin/x86_64-linux" >> "$GITHUB_PATH"
+
+      # ── System dependencies ──────────────────────────────────────────────────
+      # pdftoppm (poppler-utils): used by postrender.ts to generate images/cover.png
+      # from PDF page 1. Usually preinstalled on ubuntu-latest; installed only if missing.
+      - name: Ensure pdftoppm (poppler-utils)
+        run: |
+          if ! command -v pdftoppm >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends poppler-utils
+          fi
+
+      # ── Render ──────────────────────────────────────────────────────────────
+      # PDF + HTML into _thesis-en/ (postrender renames the PDF to
+      # these_en_<author>.pdf and fixes the download link).
+      - name: Render thesis (English profile)
+        run: quarto render --profile en
+
+      # ── Deploy ──────────────────────────────────────────────────────────────
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _thesis-en
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
